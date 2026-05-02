@@ -254,6 +254,19 @@ def fetch_rss_news(ticker, num_news, engine="Normal"):
             pub_date_node = item.find("pubDate")
 
             title = title_node.text if title_node is not None else "Noticia Financiera"
+            # Filtro de alerta máxima
+            alert_keywords = [
+                "guerra",
+                "war",
+                "missile",
+                "trump",
+                "tariffs",
+                "strike",
+                "fed",
+            ]
+            if any(keyword in title.lower() for keyword in alert_keywords):
+                title = f"🚨 URGENTE: {title}"
+
             url_link = link_node.text if link_node is not None else "#"
             summary = (
                 clean_html(desc_node.text)

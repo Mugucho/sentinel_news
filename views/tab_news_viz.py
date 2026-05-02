@@ -5,9 +5,22 @@ from src.visualization import (
     create_sidebar_sparkline,
 )
 from src.visualization import render_news_network_graph, get_price_history
+from src.visualization import (
+    render_news_network_graph,
+    get_price_history,
+    create_sidebar_sparkline,
+)
+from src.macro_calendar import render_macro_timeline  # <-- Nueva importación
 
 
 def render_news_viz_tab():
+    # --- NUEVO: RADAR DE HORARIOS MACRO EN LA BARRA LATERAL ---
+    with st.sidebar:
+        st.header("⏱️ Radar Macro")
+        render_macro_timeline()
+        st.divider()
+    # ----------------------------------------------------------
+
     st.header("🕸️ Visualizador de Noticias en Red")
     st.markdown(
         "Identifica rápidamente el pulso del mercado (Clústers de Co-ocurrencia)."

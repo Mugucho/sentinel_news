@@ -3,10 +3,10 @@ from views.tab_news_viz import render_news_viz_tab
 
 # Configuración global de la página
 st.set_page_config(
-    page_title="Sentinel v2 - Financial Alchemist", page_icon="👁️", layout="wide"
+    page_title="Sentinel News - Financial Alchemist", page_icon="👁️", layout="wide"
 )
 
-st.title("👁️ Sentinel v2")
+st.title("👁️ Sentinel News")
 st.markdown("### Plataforma de Análisis Cuantitativo y Sentimiento")
 
 # Sistema de Pestañas (Iniciando con tu Ventana Uno)

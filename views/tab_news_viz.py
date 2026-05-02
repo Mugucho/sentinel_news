@@ -4,12 +4,6 @@ from src.visualization import (
     get_price_history,
     create_sidebar_sparkline,
 )
-from src.visualization import render_news_network_graph, get_price_history
-from src.visualization import (
-    render_news_network_graph,
-    get_price_history,
-    create_sidebar_sparkline,
-)
 from src.macro_calendar import render_macro_timeline  # <-- Nueva importación
 
 

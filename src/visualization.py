@@ -155,20 +155,6 @@ def get_price_history(ticker, period="1mo"):
         return None
 
 
-# --- PUENTE DE DATOS: PRECIOS YFINANCE ---
-@st.cache_data(ttl=3600)  # Cache por una hora
-def get_price_history(ticker, period="1mo"):
-    """Obtiene los datos históricos de precios usando yfinance."""
-    try:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period=period)
-        if hist.empty:
-            return None
-        return hist[["Close"]]
-    except Exception:
-        return None
-
-
 # NUEVA FUNCIÓN: Dibuja el gráfico estilo Apple Stocks
 def create_sidebar_sparkline(price_data):
     """Crea el mini-gráfico limpio sin ejes para el panel lateral."""

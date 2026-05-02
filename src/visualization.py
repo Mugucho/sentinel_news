@@ -111,21 +111,21 @@ def analyze_basic_sentiment(text):
         return {
             "sentiment": "Positiva",
             "color": "#00d2ff",  # Cyan Neón
-            "importance": random.uniform(20, 45),
+            "importance": 20 + min(bull_score, 5) * 5,  # Base 20, +5 por cada palabra clave (máx 45)
             "scores": None,
         }
     elif bear_score > bull_score:
         return {
             "sentiment": "Negativa",
             "color": "#ff007f",  # Magenta Neón
-            "importance": random.uniform(20, 45),
+            "importance": 20 + min(bear_score, 5) * 5,  # Base 20, +5 por cada palabra clave (máx 45)
             "scores": None,
         }
     else:
         return {
             "sentiment": "Neutral",
             "color": "#8a2be2",  # Púrpura
-            "importance": random.uniform(10, 25),
+            "importance": 15,  # Valor fijo para neutral
             "scores": None,
         }
 
@@ -359,8 +359,9 @@ def render_news_network_graph(ticker, num_news=30, engine="Normal"):
         for i, news1 in enumerate(news_list):
             for j, news2 in enumerate(news_list):
                 if i < j:
-                    if news1["sentiment_color"] == news2["sentiment_color"]:
-                        if random.random() > 0.6:
+                    if news1["sentiment_color"] == news2["sentiment_color"]: # Si tienen el mismo sentimiento
+                        # Conexión determinista para reducir el desorden y mantener la consistencia
+                        if (i + j) % 4 == 0:  # Conecta ~25% de los pares posibles
                             edges.append(
                                 Edge(
                                     source=news1["id"],

@@ -1,55 +1,95 @@
 import streamlit as st
-import pandas as pd
+import requests
 from datetime import datetime
 
 
-@st.cache_data(ttl=3600)  # Se actualiza cada hora
+@st.cache_data(ttl=3600)  # Actualiza solo cada hora para ahorrar llamadas a la API
 def get_daily_macro_agenda():
     """
-    Genera la agenda macroeconómica y geopolítica del día.
-    En la Nivel 3 de la plataforma, aquí se conectaría el endpoint de Finnhub o AlphaVantage.
+    Busca la agenda macroeconómica y geopolítica del día usando la API de Finnhub.
     """
     hoy = datetime.now().strftime("%d %b %Y")
+    agenda = []
 
-    # Estructura del Radar de Eventos Críticos
-    agenda = [
-        {
-            "hora": "08:30 AM",
-            "evento": "Peticiones de Subsidio por Desempleo",
-            "impacto": "Alto",
-            "icono": "📉",
-            "color": "#f39c12",
-        },
-        {
-            "hora": "10:30 AM",
-            "evento": "Inventarios de Petróleo Crudo",
-            "impacto": "Alto",
-            "icono": "🛢️",
-            "color": "#f39c12",
-        },
-        {
-            "hora": "02:00 PM",
-            "evento": "Decisión de Tasas de Interés (FED)",
-            "impacto": "Extremo",
-            "icono": "🏦",
-            "color": "#e74c3c",
-        },
-        {
-            "hora": "02:30 PM",
-            "evento": "Rueda de Prensa de J. Powell",
-            "impacto": "Extremo",
-            "icono": "🎙️",
-            "color": "#e74c3c",
-        },
-        {
-            "hora": "04:00 PM",
-            "evento": "Resultados Earnings (GOOGL, AMZN, META)",
-            "impacto": "Alto",
-            "icono": "📊",
-            "color": "#3498db",
-        },
-    ]
+    # Intentamos obtener la clave secreta de forma segura
+    api_key = st.secrets.get("FINNHUB_API_KEY", None)
 
+    if api_key and api_key != "pega_tu_clave_aqui":
+        try:
+            # Endpoint de Finnhub para el calendario económico
+            url = f"https://finnhub.io/api/v1/calendar/economic?token={api_key}"
+            response = requests.get(url)
+
+            if response.status_code == 200:
+                data = response.json()
+                events = data.get("economicCalendar", [])
+
+                # Filtramos solo los eventos de hoy y de Estados Unidos (US)
+                hoy_str = datetime.now().strftime("%Y-%m-%d")
+
+                for e in events:
+                    if (
+                        e.get("time", "").startswith(hoy_str)
+                        and e.get("country") == "US"
+                    ):
+
+                        impact = e.get("impact", "low").lower()
+
+                        # Alquimia de colores e íconos basada en el impacto del evento
+                        if impact == "high":
+                            color = "#e74c3c"  # Rojo Neón
+                            icono = "🚨"
+                            impact_str = "Alto/Extremo"
+                        elif impact == "medium":
+                            color = "#f39c12"  # Naranja
+                            icono = "⚠️"
+                            impact_str = "Medio"
+                        else:
+                            continue  # Ignoramos eventos de bajo impacto para evitar ruido
+
+                        # Extraemos la hora (formato HH:MM)
+                        time_str = e.get("time", "").split(" ")[1][:5]
+
+                        agenda.append(
+                            {
+                                "hora": time_str,
+                                "evento": e.get("event", "Evento Económico"),
+                                "impacto": impact_str,
+                                "icono": icono,
+                                "color": color,
+                            }
+                        )
+        except Exception as e:
+            st.sidebar.error(f"Error al conectar con Finnhub: {e}")
+
+    # Fallback: Si no encuentra datos o falta la clave, muestra datos estructurales por defecto
+    if not agenda:
+        agenda = [
+            {
+                "hora": "00:00",
+                "evento": "Configura la Clave API de Finnhub",
+                "impacto": "Sistema",
+                "icono": "🔧",
+                "color": "#7f8c8d",
+            },
+            {
+                "hora": "10:30 AM",
+                "evento": "Inventarios de Petróleo (Ejemplo)",
+                "impacto": "Alto",
+                "icono": "🛢️",
+                "color": "#f39c12",
+            },
+            {
+                "hora": "02:00 PM",
+                "evento": "Decisión de Tasas (FED) (Ejemplo)",
+                "impacto": "Extremo",
+                "icono": "🏦",
+                "color": "#e74c3c",
+            },
+        ]
+
+    # Ordenamos la agenda por hora
+    agenda = sorted(agenda, key=lambda x: x["hora"])
     return hoy, agenda
 
 

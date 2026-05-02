@@ -1,5 +1,5 @@
 import streamlit as st
-from src.visualization import render_news_network_graph
+from src.visualization import render_news_network_graph, get_price_history
 
 
 def render_news_viz_tab():
@@ -8,53 +8,66 @@ def render_news_viz_tab():
         "Identifica rápidamente el pulso del mercado (Clústers de Co-ocurrencia)."
     )
 
-    col1, col2 = st.columns([1, 2])
+    # Modificamos las columnas para acomodar el Switch de IA
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         ticker = st.text_input("Ingresa el Ticker", value="TSLA").upper()
     with col2:
         num_news = st.slider("Número de noticias", 5, 30, 20)
+    with col3:
+        st.write("")  # Espaciado
+        st.write("")  # Espaciado
+        # MAGIA: El interruptor para cambiar de cerebro
+        usar_ml = st.toggle("🧠 Activar Oráculo IA (FinBERT)", value=False)
+        motor_actual = "ML" if usar_ml else "Normal"
 
     # Botón y Session State
     if st.button("Escanear y Generar Red de Noticias", type="primary"):
         st.session_state["run_news_scan"] = True
         st.session_state["current_ticker"] = ticker
         st.session_state["current_num_news"] = num_news
-        # MAGIA 1: Limpiamos la selección anterior si hacemos un nuevo escaneo
+        st.session_state["current_engine"] = (
+            motor_actual  # Guardamos qué motor elegiste
+        )
         st.session_state["selected_node_id"] = None
 
     # Lógica de renderizado
     if st.session_state.get("run_news_scan", False):
         t = st.session_state["current_ticker"]
         n = st.session_state["current_num_news"]
+        e = st.session_state.get("current_engine", "Normal")
 
-        # Recibimos el texto, la lista de noticias y el ID del nodo en el que hiciste clic
-        reporte_texto, news_list, selected_node_id = render_news_network_graph(t, n)
+        # Le pasamos el motor elegido a nuestra función render
+        reporte_texto, news_list, selected_node_id = render_news_network_graph(t, n, e)
 
-        # --- MAGIA 2: PERSISTENCIA DEL CLIC EN MEMORIA ---
-        # Si el usuario hace clic, lo guardamos firmemente en la memoria de la sesión
+        # --- LÓGICA DEL PANEL LATERAL ---
         if selected_node_id:
             st.session_state["selected_node_id"] = selected_node_id
 
-        # Recuperamos el nodo de la memoria (esto sobrevive a la recarga de Streamlit)
         current_selection = st.session_state.get("selected_node_id", None)
 
-        # --- LÓGICA DEL PANEL LATERAL ---
         if current_selection and current_selection != t:
-            # Buscamos la noticia exacta usando el ID guardado en memoria
             selected_news = next(
                 (news for news in news_list if news["id"] == current_selection), None
             )
 
             if selected_news:
-                # Dibujamos el sidebar de forma forzada
                 with st.sidebar:
                     st.success("Noticia Seleccionada")
+
+                    # --- NUEVO: GRÁFICO DE PRECIOS HISTÓRICOS ---
+                    price_data = get_price_history(t)
+                    if price_data is not None:
+                        st.write(f"**Rendimiento de {t} (Último Mes)**")
+                        st.line_chart(price_data)
+                        st.divider()
+                    # --- FIN DEL GRÁFICO ---
+
                     st.subheader(f"{selected_news['full_title']}")
                     st.divider()
                     st.write(f"**Resumen:**\n{selected_news['summary']}")
                     st.divider()
 
-                    # MAGIA 3: Corrección del mapeo a la nueva paleta Neón
                     sent = (
                         "Positivo 🟢 (Cyan)"
                         if selected_news["sentiment_color"] == "#00d2ff"
@@ -66,15 +79,35 @@ def render_news_viz_tab():
                     )
                     st.caption(f"**Impacto Estimado:** {sent}")
 
+                    # Mostramos la confianza del Oráculo si se usó el motor de ML
+                    if e == "ML" and "sentiment_details" in selected_news:
+                        scores = selected_news["sentiment_details"].get("scores")
+                        if scores:
+                            st.divider()
+                            st.write("**Confianza del Oráculo:**")
+                            st.progress(
+                                scores["positive"],
+                                text=f"🟢 Positivo ({scores['positive']:.1%})",
+                            )
+                            st.progress(
+                                scores["negative"],
+                                text=f"🔴 Negativo ({scores['negative']:.1%})",
+                            )
+                            st.progress(
+                                scores["neutral"],
+                                text=f"🟡 Neutral ({scores['neutral']:.1%})",
+                            )
+                            st.divider()
+
                     st.markdown(
                         f"**[🔗 LEER ARTÍCULO COMPLETO AQUÍ]({selected_news['url']})**"
                     )
 
         st.divider()
         st.download_button(
-            label=f"📥 Descargar Reporte de {t} (.txt)",
+            label=f"📥 Descargar Reporte de {t} ({e} Engine) (.txt)",
             data=reporte_texto,
-            file_name=f"Sentinel_Audit_{t}.txt",
+            file_name=f"Sentinel_Audit_{t}_{e}.txt",
             mime="text/plain",
             help="Descarga el texto en crudo para verificar qué datos extrajo Sentinel.",
         )

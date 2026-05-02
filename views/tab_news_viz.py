@@ -1,4 +1,9 @@
 import streamlit as st
+from src.visualization import (
+    render_news_network_graph,
+    get_price_history,
+    create_sidebar_sparkline,
+)
 from src.visualization import render_news_network_graph, get_price_history
 
 
@@ -55,12 +60,33 @@ def render_news_viz_tab():
                 with st.sidebar:
                     st.success("Noticia Seleccionada")
 
-                    # --- NUEVO: GRÁFICO DE PRECIOS HISTÓRICOS ---
+                    # --- NUEVO: GRÁFICO DE PRECIOS (Estilo Apple Stocks) ---
                     price_data = get_price_history(t)
                     if price_data is not None:
-                        st.write(f"**Rendimiento de {t} (Último Mes)**")
-                        st.line_chart(price_data)
-                        st.divider()
+                        spark_fig, p_color, current_p, delta_p, pct_p = (
+                            create_sidebar_sparkline(price_data)
+                        )
+
+                        if spark_fig:
+                            st.write(f"**Rendimiento de {t} (Último Mes)**")
+
+                            # Imprimimos el precio y el delta con el color correspondiente (Verde o Rojo)
+                            st.markdown(
+                                f"<h2 style='margin:0; padding:0;'>${current_p:,.2f}</h2>",
+                                unsafe_allow_html=True,
+                            )
+                            st.markdown(
+                                f"<p style='color:{p_color}; margin:0; padding:0; font-weight:bold;'>{delta_p:+.2f} ({pct_p:+.2f}%)</p>",
+                                unsafe_allow_html=True,
+                            )
+
+                            # Inyectamos el gráfico Plotly
+                            st.plotly_chart(
+                                spark_fig,
+                                use_container_width=True,
+                                config={"displayModeBar": False},
+                            )
+                            st.divider()
                     # --- FIN DEL GRÁFICO ---
 
                     st.subheader(f"{selected_news['full_title']}")

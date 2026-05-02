@@ -8,6 +8,7 @@ import re
 import torch
 import yfinance as yf
 import pandas as pd
+import plotly.graph_objects as go
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
@@ -154,6 +155,78 @@ def get_price_history(ticker, period="1mo"):
         return None
 
 
+# --- PUENTE DE DATOS: PRECIOS YFINANCE ---
+@st.cache_data(ttl=3600)  # Cache por una hora
+def get_price_history(ticker, period="1mo"):
+    """Obtiene los datos históricos de precios usando yfinance."""
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period=period)
+        if hist.empty:
+            return None
+        return hist[["Close"]]
+    except Exception:
+        return None
+
+
+# NUEVA FUNCIÓN: Dibuja el gráfico estilo Apple Stocks
+def create_sidebar_sparkline(price_data):
+    """Crea el mini-gráfico limpio sin ejes para el panel lateral."""
+    if price_data is None or len(price_data) < 2:
+        return None, None, 0, 0, 0
+
+    start_price = price_data["Close"].iloc[0]
+    end_price = price_data["Close"].iloc[-1]
+
+    # Verde si subió en el mes, Rojo si bajó
+    color_hex = "#2ecc71" if end_price >= start_price else "#e74c3c"
+
+    # Convertimos el color a RGBA para el relleno tenue de abajo (Opacidad 15%)
+    r, g, b = tuple(int(color_hex.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+    fill_rgba = f"rgba({r},{g},{b},0.15)"
+
+    fig = go.Figure()
+
+    # Línea de tendencia
+    fig.add_trace(
+        go.Scatter(
+            x=price_data.index,
+            y=price_data["Close"],
+            mode="lines",
+            line=dict(color=color_hex, width=3),
+            showlegend=False,
+        )
+    )
+
+    # Relleno de agua (tozeroy)
+    fig.add_trace(
+        go.Scatter(
+            x=price_data.index,
+            y=price_data["Close"],
+            fill="tozeroy",
+            fillcolor=fill_rgba,
+            mode="none",
+            showlegend=False,
+        )
+    )
+
+    # Ocultamos ejes y fondos para el look minimalista
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=5, b=5),
+        xaxis=dict(visible=False, fixedrange=True),
+        yaxis=dict(visible=False, fixedrange=True),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=120,
+        hovermode="x unified",
+    )
+
+    delta_price = end_price - start_price
+    pct_change = (delta_price / start_price) * 100
+
+    return fig, color_hex, end_price, delta_price, pct_change
+
+
 # IMPORTANTE: Usamos el caché de Streamlit para no volver a descargar
 # las noticias cada vez que haces clic en una esfera.
 @st.cache_data(ttl=600)
@@ -193,9 +266,7 @@ def fetch_rss_news(ticker, num_news, engine="Normal"):
 
             if engine == "ML":
                 with st.spinner(f"El Oráculo IA está analizando la noticia {i+1}..."):
-                    sentiment_data = analyze_finbert_sentiment(
-                        text_to_analyze
-                    )
+                    sentiment_data = analyze_finbert_sentiment(text_to_analyze)
             else:
                 sentiment_data = analyze_basic_sentiment(text_to_analyze)
 
